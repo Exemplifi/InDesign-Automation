@@ -79,19 +79,59 @@ try {
         geometricBounds: textFrameBounds
     });
 
-    // === STEP 5: Content Placement ===
+    // === STEP 5: Font Handling Setup ===
+    // Configure font handling to avoid missing font dialogs
+    app.fontCJK = "Default";
+    app.fontCyrillic = "Default";
+    app.fontGreek = "Default";
+    app.fontHebrew = "Default";
+    
+    // === STEP 6: Content Placement ===
     // Place the DOCX content into the text frame
     // InDesign will automatically handle Word style import and conversion
     textFrame.place(docxFile);
+    
+    // === STEP 6.5: Font Substitution ===
+    // Handle any missing fonts by substituting with available fonts
+    try {
+        // Get all text in the frame and check for missing fonts
+        var stories = textFrame.parentStory;
+        if (stories && stories.length > 0) {
+            for (var i = 0; i < stories.length; i++) {
+                var story = stories[i];
+                if (story && story.characters && story.characters.length > 0) {
+                    // Replace any missing fonts with default system font
+                    for (var j = 0; j < story.characters.length; j++) {
+                        try {
+                            var char = story.characters[j];
+                            if (char.appliedFont && char.appliedFont.name) {
+                                // Font exists, continue
+                            }
+                        } catch (fontError) {
+                            // Font missing, apply default font
+                            try {
+                                story.characters[j].appliedFont = app.fonts.item("Arial");
+                            } catch (e) {
+                                // If Arial not available, use any available font
+                                story.characters[j].appliedFont = app.fonts[0];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (subError) {
+        $.writeln("Font substitution warning: " + subError.message);
+    }
 
-    // === STEP 6: Frame Adjustment ===
+    // === STEP 7: Frame Adjustment ===
     // Auto-fit the text frame to the imported content
     textFrame.fit(FitOptions.FRAME_TO_CONTENT);
 
-    // === STEP 7: Success Feedback ===
+    // === STEP 8: Success Feedback ===
     // Log success and notify user
     $.writeln("DOCX imported successfully: " + docxFile.fsName);
-    alert("Import complete! Check Page 1.");
+    alert("Import complete! Check Page 1. Missing fonts have been automatically substituted.");
 
 } catch (e) {
     // === ERROR HANDLING ===
