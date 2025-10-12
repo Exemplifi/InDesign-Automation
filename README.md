@@ -3,11 +3,11 @@
 Shared ExtendScript utilities for Exemplifi Bid Automation.
 
 ## Run Locally
-1. Clone this repo
-2. Create a symlink from `scripts/` → InDesign "Scripts Panel"
-3. Open InDesign ▸ Window ▸ Utilities ▸ Scripts ▸ automation
-4. Double-click any script
+1. Clone this repo directly to InDesign's Scripts Panel directory
+2. Open InDesign ▸ Window ▸ Utilities ▸ Scripts ▸ Scripts Panel
+3. Double-click any script to run
 
 ## Scripts
-- `HelloWorld.jsx` – sanity check
-- `importDocx.jsx` – imports Google Docs → DOCX into a styled frame
+- `HelloWorld.jsx` – sanity check script
+- `Learning-the-Basics.jsx` – demonstrates basic InDesign automation
+- `ImportDocx.jsx` – imports DOCX files into InDesign with proper formatting
