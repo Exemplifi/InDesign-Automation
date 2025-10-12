@@ -16,7 +16,7 @@
     - Interactive file selection dialog
     - Automatic new document creation
     - Professional margin setup (0.75" on all sides)
-    - Word style import and mapping
+    - Automatic Word style import and conversion
     - Auto-fit text frame to content
     - Comprehensive error handling
     - User feedback and console logging
@@ -79,23 +79,16 @@ try {
         geometricBounds: textFrameBounds
     });
 
-    // === STEP 5: Import Configuration ===
-    // Configure Word import preferences for optimal results
-    var importOptions = app.wordImportPreferences;
-    importOptions.preserveLocalOverrides = false;  // Don't preserve Word formatting overrides
-    importOptions.importUnusedStyles = false;      // Don't import unused Word styles
-    importOptions.importWordStyles = true;         // Import Word paragraph styles
-    importOptions.convertPageBreaks = true;        // Convert Word page breaks to InDesign
-
-    // === STEP 6: Content Placement ===
+    // === STEP 5: Content Placement ===
     // Place the DOCX content into the text frame
+    // InDesign will automatically handle Word style import and conversion
     textFrame.place(docxFile);
 
-    // === STEP 7: Frame Adjustment ===
+    // === STEP 6: Frame Adjustment ===
     // Auto-fit the text frame to the imported content
     textFrame.fit(FitOptions.FRAME_TO_CONTENT);
 
-    // === STEP 8: Success Feedback ===
+    // === STEP 7: Success Feedback ===
     // Log success and notify user
     $.writeln("DOCX imported successfully: " + docxFile.fsName);
     alert("Import complete! Check Page 1.");
