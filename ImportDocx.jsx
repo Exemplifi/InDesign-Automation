@@ -49,47 +49,43 @@ try {
     }
 
     // === STEP 2: Document Creation ===
-    // Create a new InDesign document with default settings
+    // Create a new InDesign document with margins
     var doc = app.documents.add();
     doc.viewPreferences.rulerOrigin = RulerOrigin.PAGE_ORIGIN;
 
-    // === STEP 3: Layout Configuration ===
+    // === STEP 3: Set Document Margins ===
     // Set up professional margins (0.75 inches on all sides)
-    // These can be customized based on your document requirements
-    var marginTop = "0.75in";
-    var marginLeft = "0.75in";
-    var marginRight = "0.75in";
-    var marginBottom = "0.75in";
+    doc.documentPreferences.documentBleedTopOffset = "0in";
+    doc.documentPreferences.documentBleedBottomOffset = "0in";
+    doc.documentPreferences.documentBleedInsideOrLeftOffset = "0in";
+    doc.documentPreferences.documentBleedOutsideOrRightOffset = "0in";
+    
+    // Set margins
+    doc.marginPreferences.top = "0.75in";
+    doc.marginPreferences.left = "0.75in";
+    doc.marginPreferences.right = "0.75in";
+    doc.marginPreferences.bottom = "0.75in";
 
     // === STEP 4: Text Frame Creation ===
-    // Create a main text frame on the first page with proper margins
+    // Create a text frame that fills the page within margins
     var page = doc.pages[0];
-    var bounds = page.bounds; // [y1, x1, y2, x2] - page boundaries
+    var textFrame = page.textFrames.add();
     
-    // Calculate text frame bounds respecting margins
-    var textFrameBounds = [
-        bounds[0] + UnitValue(marginTop).as("pt"),    // Top margin
-        bounds[1] + UnitValue(marginLeft).as("pt"),   // Left margin
-        bounds[2] - UnitValue(marginBottom).as("pt"), // Bottom margin
-        bounds[3] - UnitValue(marginRight).as("pt")   // Right margin
+    // Use the page margins to create the text frame
+    textFrame.geometricBounds = [
+        doc.marginPreferences.top,
+        doc.marginPreferences.left,
+        page.bounds[2] - doc.marginPreferences.bottom,
+        page.bounds[3] - doc.marginPreferences.right
     ];
 
-    // Add the text frame to the page
-    var textFrame = page.textFrames.add({
-        geometricBounds: textFrameBounds
-    });
-
     // === STEP 5: Font Handling Setup ===
-    // Configure font handling to avoid missing font dialogs
-    app.fontCJK = "Default";
-    app.fontCyrillic = "Default";
-    app.fontGreek = "Default";
-    app.fontHebrew = "Default";
+    // Font configuration removed - not supported in all InDesign versions
     
     // === STEP 6: Content Placement ===
     // Place the DOCX content into the text frame
     // InDesign will automatically handle Word style import and conversion
-    textFrame.place(docxFile);
+    textFrame.insertionPoints[0].place(docxFile);
     
     // === STEP 6.5: Font Substitution ===
     // Handle any missing fonts by substituting with available fonts
@@ -103,17 +99,17 @@ try {
                     // Replace any missing fonts with default system font
                     for (var j = 0; j < story.characters.length; j++) {
                         try {
-                            var char = story.characters[j];
-                            if (char.appliedFont && char.appliedFont.name) {
+                            var character = story.characters[j];
+                            if (character.appliedFont && character.appliedFont.name) {
                                 // Font exists, continue
                             }
                         } catch (fontError) {
-                            // Font missing, apply default font
+                            // Font missing, apply Minion Pro as default
                             try {
-                                story.characters[j].appliedFont = app.fonts.item("Arial");
+                                character.appliedFont = app.fonts.item("Minion Pro");
                             } catch (e) {
-                                // If Arial not available, use any available font
-                                story.characters[j].appliedFont = app.fonts[0];
+                                // If Minion Pro not available, use any available font
+                                character.appliedFont = app.fonts[0];
                             }
                         }
                     }
