@@ -1,19 +1,13 @@
-# InDesign Automation
+# InDesign Automation Scripts
 
-A project for automating Adobe InDesign workflows and tasks.
+Shared ExtendScript utilities for Exemplifi Bid Automation.
 
-## Overview
+## Run Locally
+1. Clone this repo
+2. Create a symlink from `scripts/` → InDesign "Scripts Panel"
+3. Open InDesign ▸ Window ▸ Utilities ▸ Scripts ▸ automation
+4. Double-click any script
 
-This repository contains tools and scripts for automating various InDesign operations, helping to streamline document creation, formatting, and publishing workflows.
-
-## Getting Started
-
-More documentation and setup instructions will be added as the project develops.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
+## Scripts
+- `HelloWorld.jsx` – sanity check
+- `importDocx.jsx` – imports Google Docs → DOCX into a styled frame
