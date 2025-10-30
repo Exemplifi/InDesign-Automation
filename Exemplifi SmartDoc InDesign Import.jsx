@@ -2,6 +2,7 @@
 // Optimized: collapse multiple paragraph returns (^p^p → ^p), trim spaces, remove empty paragraphs
 // Handles overflow, applies styles, clears overrides, preserves bold/italic, applies table styles
 // Cross-platform bullet repair for RTF/DOCX on Windows & Mac
+// Adds: apply custom Hyperlink character style to imported links
 
 #target "InDesign"
 
@@ -34,7 +35,7 @@ try {
         w.importUnusedStyles = false;
         w.convertPageBreaks = true;
         w.preserveTrackChanges = false;
-        // You can add: w.useTypographersQuotes, etc., if needed
+        // w.useTypographersQuotes = true; // optional
     } else if (isRTF) {
         var r = app.rtfImportPreferences;
         r.preserveLocalOverrides = false;
@@ -84,8 +85,8 @@ try {
     }
 
     // ---- 9) Safe style getter ----
-    function getStyle(doc, name) {
-        try { var s = doc.paragraphStyles.itemByName(name); s.name; return s; }
+    function getStyle(docRef, name) {
+        try { var s = docRef.paragraphStyles.itemByName(name); s.name; return s; }
         catch (_) { return null; }
     }
 
@@ -109,14 +110,14 @@ try {
         var srcName = "";
         try { srcName = para.appliedParagraphStyle.name || ""; } catch (_) {}
 
-        if (/Normal/i.test(srcName) && styles.body)      para.appliedParagraphStyle = styles.body;
-        else if (/Heading 1/i.test(srcName) && styles.h1) para.appliedParagraphStyle = styles.h1;
-        else if (/Heading 2/i.test(srcName) && styles.h2) para.appliedParagraphStyle = styles.h2;
-        else if (/Heading 3/i.test(srcName) && styles.h3) para.appliedParagraphStyle = styles.h3;
-        else if (/Heading 4/i.test(srcName) && styles.h4) para.appliedParagraphStyle = styles.h4;
-        else if (/Heading 5/i.test(srcName) && styles.h5) para.appliedParagraphStyle = styles.h5;
-        else if (/Heading 6/i.test(srcName) && styles.h6) para.appliedParagraphStyle = styles.h6;
-        else if (styles.body)                             para.appliedParagraphStyle = styles.body;
+        if (/Normal/i.test(srcName) && styles.body)        para.appliedParagraphStyle = styles.body;
+        else if (/Heading 1/i.test(srcName) && styles.h1)   para.appliedParagraphStyle = styles.h1;
+        else if (/Heading 2/i.test(srcName) && styles.h2)   para.appliedParagraphStyle = styles.h2;
+        else if (/Heading 3/i.test(srcName) && styles.h3)   para.appliedParagraphStyle = styles.h3;
+        else if (/Heading 4/i.test(srcName) && styles.h4)   para.appliedParagraphStyle = styles.h4;
+        else if (/Heading 5/i.test(srcName) && styles.h5)   para.appliedParagraphStyle = styles.h5;
+        else if (/Heading 6/i.test(srcName) && styles.h6)   para.appliedParagraphStyle = styles.h6;
+        else if (styles.body)                               para.appliedParagraphStyle = styles.body;
 
         try { para.clearOverrides(); } catch (_) {}
     }
@@ -135,33 +136,33 @@ try {
         var dashBulletRE      = /^[\-–]\s+\t?/; // hyphen or en-dash followed by space/tab
 
         for (var k = 0; k < paras.length; k++) {
-            var p = paras[k];
-            var txt = p.contents || "";
+            var pp = paras[k];
+            var txt = pp.contents || "";
 
             // Sub-bullets first (so they don't get captured by primary)
             if (styles.subBullet && subBulletGlyphRE.test(txt)) {
-                p.contents = txt.replace(subBulletGlyphRE, "");
-                p.appliedParagraphStyle = styles.subBullet;
-                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { p.clearOverrides(); } catch (_) {}
+                pp.contents = txt.replace(subBulletGlyphRE, "");
+                pp.appliedParagraphStyle = styles.subBullet;
+                pp.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { pp.clearOverrides(); } catch (_) {}
                 continue;
             }
 
             // Primary bullets via glyphs (• ● ◦ etc.)
             if (styles.bullet && primaryBulletRE.test(txt)) {
-                p.contents = txt.replace(primaryBulletRE, "");
-                p.appliedParagraphStyle = styles.bullet;
-                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { p.clearOverrides(); } catch (_) {}
+                pp.contents = txt.replace(primaryBulletRE, "");
+                pp.appliedParagraphStyle = styles.bullet;
+                pp.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { pp.clearOverrides(); } catch (_) {}
                 continue;
             }
 
             // Optional: treat dash-started lines as bullets
             if (styles.bullet && dashBulletRE.test(txt)) {
-                p.contents = txt.replace(dashBulletRE, "");
-                p.appliedParagraphStyle = styles.bullet;
-                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { p.clearOverrides(); } catch (_) {}
+                pp.contents = txt.replace(dashBulletRE, "");
+                pp.appliedParagraphStyle = styles.bullet;
+                pp.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { pp.clearOverrides(); } catch (_) {}
                 continue;
             }
         }
@@ -175,7 +176,34 @@ try {
         }
     }
 
-    alert("✅ Import completed!\nHeadings, Body, Bullets/Sub-Bullets, and Table Style applied.\nBold/italic preserved; cross-platform bullet repair done.");
+    // ---- 14) Apply custom hyperlink character style (visuals for imported links) ----
+    // Change this to your team's preferred style name:
+    var hyperlinkStyleName = "Inline Link";
+    var hyperlinkStyle = null;
+    try {
+        hyperlinkStyle = doc.characterStyles.itemByName(hyperlinkStyleName);
+        // Touch to verify existence
+        var _n = hyperlinkStyle.name;
+    } catch (_) {
+        hyperlinkStyle = null;
+    }
+
+    if (hyperlinkStyle && hyperlinkStyle.isValid && doc.hyperlinks.length > 0) {
+        for (var h = 0; h < doc.hyperlinks.length; h++) {
+            var link = doc.hyperlinks[h];
+            try {
+                var src = link.source;
+                if (src instanceof HyperlinkTextSource) {
+                    var text = src.sourceText; // a Text object range
+                    text.appliedCharacterStyle = hyperlinkStyle;
+                }
+            } catch (eLink) {
+                $.writeln("⚠️ Link styling error: " + eLink.message);
+            }
+        }
+    }
+
+    alert("✅ Import completed!\nHeadings, Body, Bullets/Sub-Bullets, Table Style, and Hyperlink style applied.\nBold/italic preserved; cross-platform bullet repair done.");
 
 } catch (err) {
     alert("❌ Script error:\n" + err.message);
