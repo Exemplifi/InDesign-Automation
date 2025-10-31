@@ -96,52 +96,49 @@ try {
         try { para.clearOverrides(); } catch (_) {}
     }
 
-    // ---- 10) Smarter bullet normalization ----
-    function normalizeBulletsAndLists(tf, styles) {
+    // ---- 10) Normalize RTF list styles (true lists + fallback glyphs) ----
+    function normalizeBulletsRTF(tf, styles) {
         var paras = tf.paragraphs;
         var glyphRE = /^[\u2022\u25CF\u25E6\uF0B7\u2219\u00B7○◦o\-–•]+\s*\t?/;
 
         for (var k = 0; k < paras.length; k++) {
             var p = paras[k];
-            var txt = (p.contents || "").replace(/\s+$/,"");
+            var txt = p.contents || "";
+            var srcName = "";
+            try { srcName = p.appliedParagraphStyle.name || ""; } catch (_) {}
 
-            // Case 1: Paragraph is a real bullet list
-            if (p.bulletsAndNumberingListType == ListType.BULLET_LIST) {
+            // 1. True RTF list paragraph (auto bullets)
+            if (p.bulletsAndNumberingListType == ListType.BULLET_LIST ||
+                /List Paragraph/i.test(srcName) ||
+                /List Accent|Medium List|Dark List/i.test(srcName)) {
+
                 p.appliedParagraphStyle = styles.bullet;
                 p.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { p.clearOverrides(); } catch(_) {}
+                try { p.clearOverrides(); } catch (_) {}
                 continue;
             }
 
-            // Case 2: Glyph-based bullet (single or duplicated marker)
+            // 2. Glyph-based bullets
             if (glyphRE.test(txt)) {
                 p.contents = txt.replace(glyphRE, "");
                 p.appliedParagraphStyle = styles.bullet;
                 p.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { p.clearOverrides(); } catch(_) {}
+                try { p.clearOverrides(); } catch (_) {}
                 continue;
             }
 
-            // Case 3: Auto-list without marker (common in RTF)
-            if (p.numberingFormat && p.numberingFormat != "") {
-                p.appliedParagraphStyle = styles.bullet;
-                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { p.clearOverrides(); } catch(_) {}
-                continue;
-            }
-
-            // Case 4: Multi-bullet cleanup (“• • ” or “• » ”)
-            if ((txt.match(/•/g) || []).length > 1) {
-                p.contents = txt.replace(/^•+\s*/, "");
-                p.appliedParagraphStyle = styles.bullet;
-                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { p.clearOverrides(); } catch(_) {}
+            // 3. Numbered lists (optional mapping)
+            if (p.bulletsAndNumberingListType == ListType.NUMBERED_LIST) {
+                if (styles.numbered) {
+                    p.appliedParagraphStyle = styles.numbered;
+                    p.bulletsAndNumberingListType = ListType.NUMBERED_LIST;
+                    try { p.clearOverrides(); } catch (_) {}
+                }
                 continue;
             }
         }
     }
-    normalizeBulletsAndLists(story, styles);
-
+    normalizeBulletsRTF(story, styles);
 
     // ---- 11) Table styling ----
     if (styles.table && story.tables.length > 0) {
