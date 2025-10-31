@@ -59,7 +59,7 @@ try {
 
     // ---- 7) Collapse multiple returns ----
     if (story && story.characters.length > 0) {
-        story.changeGrep({ findWhat: "(\\r){2,}", changeTo: "\r" });
+        story.changeGrep("(\\r){2,}", "\r");
     }
 
     // ---- 8) Trim whitespace & remove empty paragraphs ----
@@ -155,7 +155,7 @@ try {
     }
 
     // ---- 14) Hyperlink character style ----
-    var hyperlinkStyleName = "Inline Link";
+    var hyperlinkStyleName = "Hyperlink Highlight";
     var hyperlinkStyle = null;
     try {
         hyperlinkStyle = doc.characterStyles.itemByName(hyperlinkStyleName);
