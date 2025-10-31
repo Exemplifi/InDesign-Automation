@@ -36,12 +36,15 @@ try {
         w.convertPageBreaks = true;
         w.preserveTrackChanges = false;
         // w.useTypographersQuotes = true; // optional
-    } else if (isRTF) {
-        var r = app.rtfImportPreferences;
-        r.preserveLocalOverrides = false;
-        r.convertPageBreaks = true;
-        // r.resolveParagraphStyleConflicts = ResolveStyleConflicts.USE_EXISTING; // optional
-    }
+        } else if (isRTF) {
+            // RTF uses the same importer as Word; reuse Word prefs
+            var w = app.wordImportPreferences;
+            w.preserveLocalOverrides = false;
+            w.importWordStyles = true;
+            w.importUnusedStyles = false;
+            w.convertPageBreaks = true;
+        }
+
 
     // ---- 3) Helper: create a text frame inside margins ----
     function createFrameInsideMargins(page) {
