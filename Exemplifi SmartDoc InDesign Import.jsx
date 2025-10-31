@@ -27,23 +27,22 @@ try {
     var isRTF  = (/\.rtf$/i).test(importFile.name);
     var isDOCX = (/\.docx$/i).test(importFile.name);
 
-    // ---- 2) Normalize import preferences for consistency ----
-    if (isDOCX) {
-        var w = app.wordImportPreferences;
-        w.preserveLocalOverrides = false;
-        w.importWordStyles = true;
-        w.importUnusedStyles = false;
-        w.convertPageBreaks = true;
-        w.preserveTrackChanges = false;
-        // w.useTypographersQuotes = true; // optional
-        } else if (isRTF) {
-            // RTF uses the same importer as Word; reuse Word prefs
-            var w = app.wordImportPreferences;
-            w.preserveLocalOverrides = false;
-            w.importWordStyles = true;
-            w.importUnusedStyles = false;
-            w.convertPageBreaks = true;
-        }
+// ---- 2) Normalize import preferences for consistency ----
+// Some InDesign installs (Server or limited plugins) do not expose wordImportPreferences.
+// To stay cross-platform safe, rely on default import settings.
+try {
+    var wPrefs = app.wordImportPreferences;
+    if (wPrefs) {
+        wPrefs.preserveLocalOverrides = false;
+        wPrefs.importWordStyles = true;
+        wPrefs.importUnusedStyles = false;
+        wPrefs.convertPageBreaks = true;
+        wPrefs.preserveTrackChanges = false;
+    }
+} catch (_) {
+    $.writeln("⚠️ Word import prefs not available; using defaults.");
+}
+
 
 
     // ---- 3) Helper: create a text frame inside margins ----
