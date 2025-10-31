@@ -96,32 +96,52 @@ try {
         try { para.clearOverrides(); } catch (_) {}
     }
 
-    // ---- 10) Normalize bullets ----
+    // ---- 10) Smarter bullet normalization ----
     function normalizeBulletsAndLists(tf, styles) {
         var paras = tf.paragraphs;
-        var glyphRE = /^[\u2022\u25CF\u25E6\uF0B7\u2219\u00B7○◦o\-–]\s*\t?/;
+        var glyphRE = /^[\u2022\u25CF\u25E6\uF0B7\u2219\u00B7○◦o\-–•]+\s*\t?/;
 
         for (var k = 0; k < paras.length; k++) {
             var p = paras[k];
-            var txt = p.contents || "";
+            var txt = (p.contents || "").replace(/\s+$/,"");
 
-            // Real bullet list
+            // Case 1: Paragraph is a real bullet list
             if (p.bulletsAndNumberingListType == ListType.BULLET_LIST) {
                 p.appliedParagraphStyle = styles.bullet;
                 p.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { p.clearOverrides(); } catch(_) {}
                 continue;
             }
 
-            // Glyph-based bullet
+            // Case 2: Glyph-based bullet (single or duplicated marker)
             if (glyphRE.test(txt)) {
                 p.contents = txt.replace(glyphRE, "");
                 p.appliedParagraphStyle = styles.bullet;
                 p.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { p.clearOverrides(); } catch(_) {}
+                continue;
+            }
+
+            // Case 3: Auto-list without marker (common in RTF)
+            if (p.numberingFormat && p.numberingFormat != "") {
+                p.appliedParagraphStyle = styles.bullet;
+                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { p.clearOverrides(); } catch(_) {}
+                continue;
+            }
+
+            // Case 4: Multi-bullet cleanup (“• • ” or “• » ”)
+            if ((txt.match(/•/g) || []).length > 1) {
+                p.contents = txt.replace(/^•+\s*/, "");
+                p.appliedParagraphStyle = styles.bullet;
+                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { p.clearOverrides(); } catch(_) {}
                 continue;
             }
         }
     }
     normalizeBulletsAndLists(story, styles);
+
 
     // ---- 11) Table styling ----
     if (styles.table && story.tables.length > 0) {
