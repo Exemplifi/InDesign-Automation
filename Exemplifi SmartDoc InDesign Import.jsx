@@ -118,43 +118,65 @@ try {
         try { para.clearOverrides(); } catch (_) {}
     }
 
-    // ---- 12) Cross-platform bullet repair ----
-    function normalizeBullets(tf) {
+    // ---- 12) Normalize bullets & map real lists to styles ----
+    function normalizeBulletsAndMapLists(tf, styles) {
         var paras = tf.paragraphs;
-        var primaryBulletRE = /^[\u2022\u25CF\u25E6\uF0B7\u2219\u00B7]\s*\t?/; // • ● ◦ ∙ ·
+
+        // Glyph-based bullets
+        var primaryBulletRE  = /^[\u2022\u25CF\u25E6\uF0B7\u2219\u00B7]\s*\t?/; // • ● ◦ ∙ ·
         var subBulletGlyphRE = /^[○◦o]\s*\t?/;
-        var dashBulletRE = /^[\-–]\s+\t?/;
+        var dashBulletRE     = /^[\-–]\s+\t?/; // - or – followed by space/tab
+
+        // Helper: decide Bullet vs Sub-Bullet for real lists by indent proximity
+        function pickListStyleByIndent(p) {
+            if (!styles.bullet && !styles.subBullet) return null;
+            var indent = p.leftIndent || 0;
+            var best = null, bestDiff = 1e9;
+
+            function consider(style) {
+                if (!style || !style.isValid) return;
+                try {
+                    var diff = Math.abs(indent - (style.leftIndent || 0));
+                    if (diff < bestDiff) { best = style; bestDiff = diff; }
+                } catch (_) {}
+            }
+            consider(styles.bullet);
+            consider(styles.subBullet);
+            return best || styles.bullet || styles.subBullet;
+        }
 
         for (var k = 0; k < paras.length; k++) {
-            var pp = paras[k];
-            var txt = pp.contents || "";
+            var p = paras[k];
+            var txt = p.contents || "";
 
+            // Case A: real InDesign list (no glyph in contents)
+            if (p.bulletsAndNumberingListType == ListType.BULLET_LIST) {
+                var target = pickListStyleByIndent(p);
+                if (target && p.appliedParagraphStyle != target) {
+                    p.appliedParagraphStyle = target;
+                    try { p.clearOverrides(); } catch (_) {}
+                }
+                continue; // don't try to strip glyphs; there aren't any
+            }
+
+            // Case B: glyph-based bullets in text — clean & style
             if (styles.subBullet && subBulletGlyphRE.test(txt)) {
-                pp.contents = txt.replace(subBulletGlyphRE, "");
-                pp.appliedParagraphStyle = styles.subBullet;
-                pp.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { pp.clearOverrides(); } catch (_) {}
+                p.contents = txt.replace(subBulletGlyphRE, "");
+                p.appliedParagraphStyle = styles.subBullet;
+                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { p.clearOverrides(); } catch (_) {}
                 continue;
             }
-
-            if (styles.bullet && primaryBulletRE.test(txt)) {
-                pp.contents = txt.replace(primaryBulletRE, "");
-                pp.appliedParagraphStyle = styles.bullet;
-                pp.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { pp.clearOverrides(); } catch (_) {}
-                continue;
-            }
-
-            if (styles.bullet && dashBulletRE.test(txt)) {
-                pp.contents = txt.replace(dashBulletRE, "");
-                pp.appliedParagraphStyle = styles.bullet;
-                pp.bulletsAndNumberingListType = ListType.BULLET_LIST;
-                try { pp.clearOverrides(); } catch (_) {}
+            if (styles.bullet && (primaryBulletRE.test(txt) || dashBulletRE.test(txt))) {
+                p.contents = txt.replace(primaryBulletRE, "").replace(dashBulletRE, "");
+                p.appliedParagraphStyle = styles.bullet;
+                p.bulletsAndNumberingListType = ListType.BULLET_LIST;
+                try { p.clearOverrides(); } catch (_) {}
                 continue;
             }
         }
     }
-    normalizeBullets(story);
+    normalizeBulletsAndMapLists(story, styles);
 
     // ---- 13) Table styling ----
     if (styles.table && story.tables.length > 0) {
