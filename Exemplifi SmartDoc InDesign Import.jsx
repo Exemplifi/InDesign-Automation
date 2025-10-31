@@ -58,9 +58,18 @@ try {
     }
 
     // ---- 7) Collapse multiple returns ----
-    if (story && story.characters.length > 0) {
-        story.changeGrep("(\\r){2,}", "\r");
+    try {
+        app.findGrepPreferences = NothingEnum.nothing;
+        app.changeGrepPreferences = NothingEnum.nothing;
+        app.findGrepPreferences.findWhat = "(\\r){2,}";
+        app.changeGrepPreferences.changeTo = "\r";
+        story.changeGrep(); // apply to just this story
+        app.findGrepPreferences = NothingEnum.nothing;
+        app.changeGrepPreferences = NothingEnum.nothing;
+    } catch (e) {
+        $.writeln("⚠️ GREP cleanup failed: " + e.message);
     }
+
 
     // ---- 8) Trim whitespace & remove empty paragraphs ----
     for (var i = 0; i < story.paragraphs.length; i++) {
@@ -154,28 +163,37 @@ try {
         }
     }
 
-    // ---- 14) Hyperlink character style ----
-    var hyperlinkStyleName = "Hyperlink Highlight";
-    var hyperlinkStyle = null;
-    try {
-        hyperlinkStyle = doc.characterStyles.itemByName(hyperlinkStyleName);
-        hyperlinkStyle.name;
-    } catch (_) { hyperlinkStyle = null; }
+// ---- 14) Apply custom hyperlink character style (URL sources only) ----
+var hyperlinkStyleName = "Hyperlink Highlight"; // your team's character style
+var hyperlinkStyle = null;
+try {
+    hyperlinkStyle = doc.characterStyles.itemByName(hyperlinkStyleName);
+    hyperlinkStyle.name; // verify it exists
+} catch (_) {
+    hyperlinkStyle = null;
+}
 
-    if (hyperlinkStyle && hyperlinkStyle.isValid && doc.hyperlinks.length > 0) {
-        for (var h = 0; h < doc.hyperlinks.length; h++) {
-            var link = doc.hyperlinks[h];
-            try {
-                var src = link.source;
-                if (src instanceof HyperlinkTextSource) {
-                    var text = src.sourceText;
+if (hyperlinkStyle && hyperlinkStyle.isValid && doc.hyperlinks.length > 0) {
+    for (var h = 0; h < doc.hyperlinks.length; h++) {
+        var link = doc.hyperlinks[h];
+        try {
+            // Only style hyperlinks whose destination is a real URL
+            if (!(link.destination instanceof HyperlinkURLDestination)) continue;
+
+            var src = link.source;
+            if (src instanceof HyperlinkTextSource) {
+                var text = src.sourceText;
+                if (text && text.length > 0) {
                     text.appliedCharacterStyle = hyperlinkStyle;
                 }
-            } catch (eLink) {
-                $.writeln("⚠️ Link styling error: " + eLink.message);
             }
+        } catch (eLink) {
+            $.writeln("⚠️ Link styling error: " + eLink.message);
         }
     }
+}
+
+
 
     alert("✅ Import complete.\nHeadings, Bullets, Tables, and Hyperlink styles applied.\n(See console for debug logs.)");
 
