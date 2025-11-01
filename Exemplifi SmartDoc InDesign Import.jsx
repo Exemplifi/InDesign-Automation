@@ -97,7 +97,7 @@ for (var j = 0; j < story.paragraphs.length; j++) {
     try { para.clearOverrides(); } catch (_) {}
 }
 
-// ---- 10) Normalize bullets *after* headings mapped ----
+// ---- 10) Normalize bullets and lists (tightened detection) ----
 function normalizeBulletsAndLists(tf, styles) {
     var paras = tf.paragraphs;
     var glyphRE = /^[\u2022\u25CF\u25E6\uF0B7\u2219\u00B7○◦o\-–•]+\s*\t?/;
@@ -108,32 +108,19 @@ function normalizeBulletsAndLists(tf, styles) {
         var srcName = "";
         try { srcName = p.appliedParagraphStyle.name || ""; } catch(_) {}
 
-        // Skip Headings or Tables
+        // Skip headings or tables
         if (/Heading|Table/i.test(srcName)) continue;
 
-        // Case 1: True bullet list or "List Paragraph"
-        if (p.bulletsAndNumberingListType == ListType.BULLET_LIST ||
-            /List Paragraph|List Accent|Medium List|Dark List/i.test(srcName)) {
-            p.appliedParagraphStyle = styles.bullet;
-            try { p.clearOverrides(); } catch(_) {}
-            continue;
-        }
+        var hasGlyph = glyphRE.test(txt);
+        var hasIndent = (p.leftIndent && p.leftIndent > 0);
+        var isTrueList = (p.bulletsAndNumberingListType == ListType.BULLET_LIST);
 
-        // Case 2: Glyph-based bullet
-        if (glyphRE.test(txt)) {
+        // Apply bullet style only if visibly or structurally list-like
+        if (isTrueList || hasGlyph || hasIndent) {
             p.contents = txt.replace(glyphRE, "");
             p.appliedParagraphStyle = styles.bullet;
             p.bulletsAndNumberingListType = ListType.BULLET_LIST;
             try { p.clearOverrides(); } catch(_) {}
-            continue;
-        }
-
-        // Case 3: Numbered or auto-list
-        if (p.numberingFormat && p.numberingFormat != "") {
-            p.appliedParagraphStyle = styles.numbered || styles.bullet;
-            p.bulletsAndNumberingListType = ListType.BULLET_LIST;
-            try { p.clearOverrides(); } catch(_) {}
-            continue;
         }
     }
 }
