@@ -97,33 +97,57 @@ for (var j = 0; j < story.paragraphs.length; j++) {
     try { para.clearOverrides(); } catch (_) {}
 }
 
-// ---- 10) Normalize bullets and lists (tightened detection) ----
+// ---- 10) Normalize bullets and lists (tab-only + style-aware, no false positives) ----
 function normalizeBulletsAndLists(tf, styles) {
     var paras = tf.paragraphs;
+
+    // Bullet characters some RTFs keep as plain text
     var glyphRE = /^[\u2022\u25CF\u25E6\uF0B7\u2219\u00B7○◦o\-–•]+\s*\t?/;
 
+    // Helper: is this paragraph tagged with a list-y style name?
+    function looksListyStyle(p) {
+        try {
+            var n = (p.appliedParagraphStyle && p.appliedParagraphStyle.name) || "";
+            return /list|bullet/i.test(n); // catches "List Paragraph", "Bulleted", etc.
+        } catch (_) { return false; }
+    }
+
+    var prevWasBullet = false;
+
     for (var k = 0; k < paras.length; k++) {
-        var p = paras[k];
+        var p   = paras[k];
         var txt = (p.contents || "").replace(/\s+$/,"");
-        var srcName = "";
-        try { srcName = p.appliedParagraphStyle.name || ""; } catch(_) {}
 
-        // Skip headings or tables
-        if (/Heading|Table/i.test(srcName)) continue;
+        // Skip headings and tables entirely
+        try {
+            var sn = (p.appliedParagraphStyle && p.appliedParagraphStyle.name) || "";
+            if (/^heading\s*\d+$/i.test(sn) || /^table/i.test(sn)) { prevWasBullet = false; continue; }
+        } catch (_) {}
 
-        var hasGlyph = glyphRE.test(txt);
-        var hasIndent = (p.leftIndent && p.leftIndent > 0);
-        var isTrueList = (p.bulletsAndNumberingListType == ListType.BULLET_LIST);
+        var isTrueList   = (p.bulletsAndNumberingListType == ListType.BULLET_LIST);
+        var hasGlyph     = glyphRE.test(txt);
+        var startsWithTab= /^\t/.test(txt);
+        var styleIsListy = looksListyStyle(p);
 
-        // Apply bullet style only if visibly or structurally list-like
-        if (isTrueList || hasGlyph || hasIndent) {
-            p.contents = txt.replace(glyphRE, "");
-            p.appliedParagraphStyle = styles.bullet;
+        // Decide if this should be a bullet:
+        // 1) Already a real InDesign bullet
+        // 2) Has a visible bullet glyph/dash
+        // 3) Starts with a tab AND (style looks listy OR previous paragraph was a bullet)
+        var shouldBeBullet = isTrueList || hasGlyph || (startsWithTab && (styleIsListy || prevWasBullet));
+
+        if (shouldBeBullet) {
+            // Strip any leading glyphs/dashes/tabs that snuck in
+            p.contents = txt.replace(glyphRE, "").replace(/^\t+/, "");
+            p.appliedParagraphStyle = styles.bullet || p.appliedParagraphStyle;
             p.bulletsAndNumberingListType = ListType.BULLET_LIST;
             try { p.clearOverrides(); } catch(_) {}
+            prevWasBullet = true;
+        } else {
+            prevWasBullet = false;
         }
     }
 }
+
 normalizeBulletsAndLists(story, styles);
 
     // ---- 11) Table styling ----
